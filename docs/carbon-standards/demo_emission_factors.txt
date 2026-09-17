@@ -1,0 +1,19 @@
+CarbonAI Demo Emission Factor Reference
+
+The following values are fictional test data used only for
+software development and RAG experiments.
+
+Tianjin:
+Grid emission factor: 0.58 tCO2/MWh
+
+Beijing:
+Grid emission factor: 0.55 tCO2/MWh
+
+Shanghai:
+Grid emission factor: 0.52 tCO2/MWh
+
+Guangdong:
+Grid emission factor: 0.45 tCO2/MWh
+
+These values must not be used for real carbon credit
+verification or regulatory reporting.
