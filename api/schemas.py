@@ -35,3 +35,17 @@ class AuditResponse(BaseModel):
     
 class AuditResumeRequest(BaseModel):
     message: str
+    
+class AuditDetailResponse(BaseModel):
+    audit_id: str
+    status: str
+
+    project_name: str | None = None
+    project_type: str | None = None
+    project_region: str | None = None
+
+    annual_generation_mwh: float | None = None
+    grid_emission_factor: float | None = None
+    carbon_estimate: float | None = None
+
+    audit_report: str | None = None

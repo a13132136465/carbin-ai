@@ -1,10 +1,12 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    ForeignKey,
     String,
     Float,
     Text,
-    DateTime,
 )
 
 from sqlalchemy.orm import (
@@ -89,4 +91,62 @@ class CarbonAudit(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
         nullable=False,
+    )
+
+class BlockchainTransaction(Base):
+
+    __tablename__ = "blockchain_transaction"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    audit_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey(
+            "carbon_audit.audit_id"
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    chain_id: Mapped[int] = mapped_column(
+        BigInteger,
+        nullable=False,
+    )
+
+    contract_address: Mapped[str] = (
+        mapped_column(
+            String(64),
+            nullable=False,
+        )
+    )
+
+    tx_hash: Mapped[str | None] = mapped_column(
+        String(80),
+        unique=True,
+        nullable=True,
+        index=True,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="PENDING",
+    )
+
+    created_at: Mapped[datetime] = (
+        mapped_column(
+            DateTime,
+            default=datetime.utcnow,
+            nullable=False,
+        )
+    )
+
+    confirmed_at: Mapped[datetime | None] = (
+        mapped_column(
+            DateTime,
+            nullable=True,
+        )
     )

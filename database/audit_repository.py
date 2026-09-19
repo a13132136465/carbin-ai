@@ -5,6 +5,7 @@ from database.connection import (
 from database.models import (
     CarbonAudit,
 )
+from domain.audit_status import AuditStatus
 
 
 def create_audit(
@@ -56,7 +57,7 @@ def find_by_thread_id(
 def update_audit_from_state(
     thread_id: str,
     result: dict,
-    status: str,
+    status: AuditStatus,
 ):
 
     with SessionLocal() as session:
@@ -70,7 +71,7 @@ def update_audit_from_state(
         if audit is None:
             raise ValueError("Audit not found")
 
-        audit.status = status
+        audit.status = status.value
 
         audit.project_name = result.get("project_name")
 
@@ -85,5 +86,24 @@ def update_audit_from_state(
         audit.carbon_estimate = result.get("carbon_estimate")
 
         audit.audit_report = result.get("audit_report")
+
+        session.commit()
+
+
+def update_status(
+    audit_id: str,
+    status: str,
+):
+
+    with SessionLocal() as session:
+
+        audit = (
+            session.query(CarbonAudit).filter(CarbonAudit.audit_id == audit_id).first()
+        )
+
+        if audit is None:
+            raise ValueError("Audit not found")
+
+        audit.status = status
 
         session.commit()

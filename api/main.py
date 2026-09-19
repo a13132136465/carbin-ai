@@ -1,25 +1,22 @@
-import uuid
-
-from fastapi import FastAPI, HTTPException
-
-from api.schemas import (
-    AuditRequest,
-    AuditResponse,
+from fastapi import (
+    FastAPI,
+    HTTPException,
 )
-
-from agent.carbon_graph import (
-    graph,
-    create_initial_state,
-)
-
-from langgraph.types import Command
 
 from api.schemas import (
     AuditRequest,
     AuditResumeRequest,
     AuditResponse,
+    AuditDetailResponse,
 )
-from database.audit_repository import create_audit, update_audit_from_state
+
+from services.audit_service import (
+    start_audit,
+    resume_audit as resume_audit_service,
+    get_audit as get_audit_service,
+    approve_audit as approve_audit_service,
+    reject_audit as reject_audit_service,
+)
 
 app = FastAPI(
     title="CarbonAI API",
@@ -40,66 +37,38 @@ def create_audit(
     request: AuditRequest,
 ):
 
-    thread_id = str(uuid.uuid4())
-    audit_id = "AUD-" + uuid.uuid4().hex[:12].upper()
-    create_audit(
-        audit_id=audit_id,
-        thread_id=thread_id,
-    )
+    result = start_audit(request.message)
 
-    config = {"configurable": {"thread_id": thread_id}}
-
-    initial_state = create_initial_state(request.message)
-
-    result = graph.invoke(
-        initial_state,
-        config=config,
-    )
-    return build_audit_response(
-        result,
-        thread_id,
-    )
+    return build_audit_response(result)
 
 
 def build_audit_response(
-    result: dict,
-    thread_id: str,
+    service_result: dict,
 ) -> AuditResponse:
 
+    result = service_result["result"]
+
     interrupts = result.get("__interrupt__")
-    status = "NEEDS_INPUT" if interrupts else "COMPLETED"
-    update_audit_from_state(
-        thread_id=thread_id,
-        result=result,
-        status=status,
-    )
+
+    question = None
+    missing_fields = []
+
     if interrupts:
+
         interrupt_data = interrupts[0].value
 
-        return AuditResponse(
-            status="NEEDS_INPUT",
-            thread_id=thread_id,
-            audit_id=result.get("audit_id"),
-            question=(interrupt_data.get("question")),
-            project_name=result.get("project_name"),
-            project_type=result.get("project_type"),
-            project_region=result.get("project_region"),
-            annual_generation_mwh=(result.get("annual_generation_mwh")),
-            grid_emission_factor=(result.get("grid_emission_factor")),
-            carbon_estimate=result.get("carbon_estimate"),
-            audit_report=result.get("audit_report"),
-            missing_fields=(
-                interrupt_data.get(
-                    "missing_fields",
-                    [],
-                )
-            ),
+        question = interrupt_data.get("question")
+
+        missing_fields = interrupt_data.get(
+            "missing_fields",
+            [],
         )
 
     return AuditResponse(
-        status="COMPLETED",
-        thread_id=thread_id,
-        question=None,
+        audit_id=service_result["audit_id"],
+        thread_id=service_result["thread_id"],
+        status=service_result["status"],
+        question=question,
         project_name=result.get("project_name"),
         project_type=result.get("project_type"),
         project_region=result.get("project_region"),
@@ -107,7 +76,7 @@ def build_audit_response(
         grid_emission_factor=result.get("grid_emission_factor"),
         carbon_estimate=result.get("carbon_estimate"),
         audit_report=result.get("audit_report"),
-        missing_fields=[],
+        missing_fields=(missing_fields),
     )
 
 
@@ -120,27 +89,95 @@ def resume_audit(
     request: AuditResumeRequest,
 ):
 
-    config = {"configurable": {"thread_id": thread_id}}
     try:
 
-        result = graph.invoke(
-            Command(resume=request.message),
-            config=config,
-        )
-        status = "NEEDS_INPUT" if result.get("__interrupt__") else "COMPLETED"
-
-        update_audit_from_state(
+        result = resume_audit_service(
             thread_id=thread_id,
-            result=result,
-            status=status,
+            message=request.message,
         )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
+
     except Exception as e:
+
         raise HTTPException(
             status_code=400,
-            detail=f"Error resuming audit: {str(e)}",
+            detail=("Error resuming audit: " f"{str(e)}"),
         )
 
-    return build_audit_response(
-        result,
-        thread_id,
+    return build_audit_response(result)
+
+
+@app.get(
+    "/api/audits/{audit_id}",
+    response_model=AuditDetailResponse,
+)
+def get_audit(
+    audit_id: str,
+):
+
+    try:
+        audit = get_audit_service(audit_id)
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
+
+    return AuditDetailResponse(
+        audit_id=audit.audit_id,
+        status=audit.status,
+        project_name=audit.project_name,
+        project_type=audit.project_type,
+        project_region=audit.project_region,
+        annual_generation_mwh=(audit.annual_generation_mwh),
+        grid_emission_factor=(audit.grid_emission_factor),
+        carbon_estimate=(audit.carbon_estimate),
+        audit_report=audit.audit_report,
     )
+
+
+@app.post("/api/audits/{audit_id}/approve")
+def approve_audit(
+    audit_id: str,
+):
+
+    try:
+        audit = approve_audit_service(audit_id)
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
+    return {
+        "audit_id": audit.audit_id,
+        "status": audit.status,
+    }
+
+
+@app.post("/api/audits/{audit_id}/reject")
+def reject_audit(
+    audit_id: str,
+):
+
+    try:
+        audit = reject_audit_service(audit_id)
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
+    return {
+        "audit_id": audit.audit_id,
+        "status": audit.status,
+    }

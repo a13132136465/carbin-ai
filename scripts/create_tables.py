@@ -3,7 +3,7 @@ from database.connection import (
     engine,
 )
 
-from database.models import CarbonAudit
+from database.models import CarbonAudit,BlockchainTransaction
 
 
 def main():
