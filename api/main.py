@@ -17,6 +17,10 @@ from services.audit_service import (
     approve_audit as approve_audit_service,
     reject_audit as reject_audit_service,
 )
+from services.project_service import (
+    get_project as get_project_service
+)
+
 
 app = FastAPI(
     title="CarbonAI API",
@@ -68,6 +72,7 @@ def build_audit_response(
         audit_id=service_result["audit_id"],
         thread_id=service_result["thread_id"],
         status=service_result["status"],
+        project_id=service_result["project_id"],
         question=question,
         project_name=result.get("project_name"),
         project_type=result.get("project_type"),
@@ -131,6 +136,7 @@ def get_audit(
         )
 
     return AuditDetailResponse(
+        project_id=audit.project_id,
         audit_id=audit.audit_id,
         status=audit.status,
         project_name=audit.project_name,
@@ -181,3 +187,16 @@ def reject_audit(
         "audit_id": audit.audit_id,
         "status": audit.status,
     }
+
+
+@app.get("/api/projects/{project_id}")
+def get_project(
+    project_id: str,
+):
+
+    project = get_project_service(project_id)
+
+    if project is None:
+        raise ValueError("Project not found")
+
+    return project

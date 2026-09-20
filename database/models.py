@@ -17,6 +17,51 @@ from sqlalchemy.orm import (
 from database.connection import Base
 
 
+class CarbonProject(Base):
+
+    __tablename__ = "carbon_project"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    project_id: Mapped[str] = mapped_column(
+        String(64),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    project_name: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+    )
+
+    project_type: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    project_region: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
+
+
 class CarbonAudit(Base):
 
     __tablename__ = "carbon_audit"
@@ -24,6 +69,12 @@ class CarbonAudit(Base):
     id: Mapped[int] = mapped_column(
         primary_key=True,
         autoincrement=True,
+    )
+    project_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("carbon_project.project_id"),
+        nullable=True,
+        index=True,
     )
 
     audit_id: Mapped[str] = mapped_column(
@@ -93,6 +144,7 @@ class CarbonAudit(Base):
         nullable=False,
     )
 
+
 class BlockchainTransaction(Base):
 
     __tablename__ = "blockchain_transaction"
@@ -104,9 +156,7 @@ class BlockchainTransaction(Base):
 
     audit_id: Mapped[str] = mapped_column(
         String(64),
-        ForeignKey(
-            "carbon_audit.audit_id"
-        ),
+        ForeignKey("carbon_audit.audit_id"),
         nullable=False,
         index=True,
     )
@@ -116,11 +166,9 @@ class BlockchainTransaction(Base):
         nullable=False,
     )
 
-    contract_address: Mapped[str] = (
-        mapped_column(
-            String(64),
-            nullable=False,
-        )
+    contract_address: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
     )
 
     tx_hash: Mapped[str | None] = mapped_column(
@@ -136,17 +184,13 @@ class BlockchainTransaction(Base):
         default="PENDING",
     )
 
-    created_at: Mapped[datetime] = (
-        mapped_column(
-            DateTime,
-            default=datetime.utcnow,
-            nullable=False,
-        )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
     )
 
-    confirmed_at: Mapped[datetime | None] = (
-        mapped_column(
-            DateTime,
-            nullable=True,
-        )
+    confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
     )

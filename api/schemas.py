@@ -15,6 +15,8 @@ class AuditResponse(BaseModel):
     
     thread_id: str
     
+    project_id: str | None = None
+    
     question: str | None = None
 
     project_name: Optional[str] = None

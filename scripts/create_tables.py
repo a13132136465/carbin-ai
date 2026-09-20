@@ -3,22 +3,20 @@ from database.connection import (
     engine,
 )
 
-from database.models import CarbonAudit,BlockchainTransaction
+from database.models import (
+    CarbonProject,
+    CarbonAudit,
+    BlockchainTransaction,
+)
 
 
 def main():
 
-    print(
-        "Creating CarbonAI business tables..."
-    )
+    print("Creating CarbonAI business tables...")
 
-    Base.metadata.create_all(
-        bind=engine
-    )
+    Base.metadata.create_all(bind=engine)
 
-    print(
-        "Business tables created."
-    )
+    print("Business tables created.")
 
 
 if __name__ == "__main__":

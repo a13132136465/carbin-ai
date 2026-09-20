@@ -49,6 +49,24 @@ class Settings:
     # DATABASE
     # =========================
     DATABASE_URL = os.getenv("DATABASE_URL")
+    # =========================
+    # WEB3
+    # =========================
+    AVALANCHE_FUJI_RPC_URL = os.getenv(
+        "AVALANCHE_FUJI_RPC_URL",
+        "https://api.avax-test.network/ext/bc/C/rpc",
+    )
+
+    AVALANCHE_CHAIN_ID = int(
+        os.getenv(
+            "AVALANCHE_CHAIN_ID",
+            "43113",
+        )
+    )
+
+    BLOCKCHAIN_OPERATOR_ADDRESS = os.getenv("BLOCKCHAIN_OPERATOR_ADDRESS")
+
+    CARBON_CREDIT_CONTRACT_ADDRESS = os.getenv("CARBON_CREDIT_CONTRACT_ADDRESS")
 
 
 settings = Settings()

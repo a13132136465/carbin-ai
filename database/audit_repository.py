@@ -11,6 +11,7 @@ from domain.audit_status import AuditStatus
 def create_audit(
     audit_id: str,
     thread_id: str,
+    project_id: str | None = None,
 ) -> CarbonAudit:
 
     with SessionLocal() as session:
@@ -18,6 +19,7 @@ def create_audit(
         audit = CarbonAudit(
             audit_id=audit_id,
             thread_id=thread_id,
+            project_id=project_id,
             status="IN_PROGRESS",
         )
 
@@ -105,5 +107,26 @@ def update_status(
             raise ValueError("Audit not found")
 
         audit.status = status
+
+        session.commit()
+
+
+def update_audit_project_id(
+    thread_id: str,
+    project_id: str,
+):
+
+    with SessionLocal() as session:
+
+        audit = (
+            session.query(CarbonAudit)
+            .filter(CarbonAudit.thread_id == thread_id)
+            .first()
+        )
+
+        if audit is None:
+            raise ValueError("Audit not found")
+
+        audit.project_id = project_id
 
         session.commit()

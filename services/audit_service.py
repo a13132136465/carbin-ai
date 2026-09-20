@@ -11,9 +11,12 @@ from database.audit_repository import (
     find_by_thread_id,
     update_audit_from_state,
     update_status,
+    update_audit_project_id,
 )
 from langgraph.types import Command
 from domain.audit_status import AuditStatus
+
+from services.project_service import get_or_create_project
 
 
 def resolve_status(
@@ -47,17 +50,13 @@ def start_audit(
         initial_state,
         config=config,
     )
-
-    status = resolve_status(result)
-
-    update_audit_from_state(
-        thread_id=thread_id,
-        result=result,
-        status=status,
+    project,status = handle_graph_result(
+        thread_id,
+        result,
     )
-
     return {
         "audit_id": audit_id,
+        "project_id": project.project_id,
         "thread_id": thread_id,
         "status": status,
         "result": result,
@@ -81,16 +80,14 @@ def resume_audit(
         config=config,
     )
 
-    status = resolve_status(result)
-
-    update_audit_from_state(
-        thread_id=thread_id,
-        result=result,
-        status=status,
+    _,status = handle_graph_result(
+        thread_id,
+        result,
     )
 
     return {
         "audit_id": audit.audit_id,
+        "project_id": audit.project_id,
         "thread_id": thread_id,
         "status": status,
         "result": result,
@@ -147,3 +144,48 @@ def reject_audit(
     )
 
     return find_by_audit_id(audit_id)
+
+
+def bind_project_if_possible(
+    thread_id: str,
+    result: dict,
+):
+
+    project_name = result.get("project_name")
+
+    if not project_name:
+        return None
+
+    project = get_or_create_project(
+        project_name=project_name,
+        project_type=result.get("project_type"),
+        project_region=result.get("project_region"),
+    )
+
+    update_audit_project_id(
+        thread_id=thread_id,
+        project_id=project.project_id,
+    )
+
+    return project
+
+
+def handle_graph_result(
+    thread_id: str,
+    result: dict,
+):
+
+    project = bind_project_if_possible(
+        thread_id=thread_id,
+        result=result,
+    )
+
+    status = resolve_status(result)
+
+    update_audit_from_state(
+        thread_id=thread_id,
+        result=result,
+        status=status,
+    )
+
+    return project, status
