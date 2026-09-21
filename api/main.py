@@ -197,6 +197,9 @@ def get_project(
     project = get_project_service(project_id)
 
     if project is None:
-        raise ValueError("Project not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found",
+        )
 
     return project

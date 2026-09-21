@@ -26,6 +26,9 @@ def resolve_status(
     if result.get("__interrupt__"):
         return AuditStatus.NEEDS_INPUT
 
+    if result.get("validation_status") == "INVALID":
+        return AuditStatus.REJECTED
+
     return AuditStatus.COMPLETED
 
 
@@ -56,7 +59,7 @@ def start_audit(
     )
     return {
         "audit_id": audit_id,
-        "project_id": project.project_id,
+        "project_id": project.project_id if project is not None else None,
         "thread_id": thread_id,
         "status": status,
         "result": result,
@@ -80,14 +83,18 @@ def resume_audit(
         config=config,
     )
 
-    _,status = handle_graph_result(
+    project, status = handle_graph_result(
         thread_id,
         result,
     )
 
     return {
         "audit_id": audit.audit_id,
-        "project_id": audit.project_id,
+        "project_id": (
+            project.project_id
+            if project is not None
+            else audit.project_id
+        ),
         "thread_id": thread_id,
         "status": status,
         "result": result,

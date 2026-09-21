@@ -41,6 +41,7 @@ class AuditResumeRequest(BaseModel):
 class AuditDetailResponse(BaseModel):
     audit_id: str
     status: str
+    project_id: str | None = None
 
     project_name: str | None = None
     project_type: str | None = None

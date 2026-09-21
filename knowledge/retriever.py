@@ -6,8 +6,6 @@ from knowledge.vector_store import (
     get_vector_store,
 )
 
-RETRIEVAL_DISTANCE_THRESHOLD = 0.85
-
 REGION_MAPPING = {
     "天津": "Tianjin",
     "北京": "Beijing",
@@ -78,12 +76,15 @@ def search_best(
     print("Raw score:", result.score)
     print(
         "Threshold:",
-        RETRIEVAL_DISTANCE_THRESHOLD,
+        settings.RETRIEVAL_DISTANCE_THRESHOLD,
     )
     print("Content:")
     print(result.content)
 
-    if result.score is None or result.score > RETRIEVAL_DISTANCE_THRESHOLD:
+    if (
+        result.score is None
+        or result.score > settings.RETRIEVAL_DISTANCE_THRESHOLD
+    ):
         print("Retrieval rejected by threshold")
 
         return RetrievalResult(
