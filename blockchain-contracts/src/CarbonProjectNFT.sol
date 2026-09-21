@@ -20,6 +20,9 @@ contract CarbonProjectNFT is ERC721URIStorage, AccessControl {
 
     error EmptyProjectId();
 
+    error InvalidRecipient();
+    error EmptyMetadataURI();
+
     event ProjectMinted(
         uint256 indexed tokenId,
         bytes32 indexed projectHash,
@@ -38,6 +41,17 @@ contract CarbonProjectNFT is ERC721URIStorage, AccessControl {
         string calldata projectId,
         string calldata metadataURI
     ) external onlyRole(ISSUER_ROLE) returns (uint256) {
+        if (to == address(0)) {
+            revert InvalidRecipient();
+        }
+
+        if (bytes(projectId).length == 0) {
+            revert EmptyProjectId();
+        }
+
+        if (bytes(metadataURI).length == 0) {
+            revert EmptyMetadataURI();
+        }
         if (bytes(projectId).length == 0) {
             revert EmptyProjectId();
         }

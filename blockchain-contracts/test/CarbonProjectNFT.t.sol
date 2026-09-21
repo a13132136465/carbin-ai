@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 
 import {CarbonProjectNFT} from "../src/CarbonProjectNFT.sol";
+import {CarbonCredit} from "../src/CarbonCredit.sol";
 
 contract CarbonProjectNFTTest is Test {
     CarbonProjectNFT nft;
@@ -12,10 +13,15 @@ contract CarbonProjectNFTTest is Test {
 
     address projectOwner = address(0x2);
 
+    address backend = address(0x3);
+
+    CarbonCredit credit;
+
     function setUp() public {
         vm.prank(admin);
 
         nft = new CarbonProjectNFT(admin);
+        credit = new CarbonCredit(admin, address(nft));
     }
 
     function testMintProject() public {
@@ -89,5 +95,60 @@ contract CarbonProjectNFTTest is Test {
         vm.prank(admin);
 
         nft.mintProject(projectOwner, "PRJ-2026-001", "ipfs://project-001");
+    }
+    function testAdminCanGrantIssuerRole() public {
+        bytes32 issuerRole = nft.ISSUER_ROLE();
+
+        vm.prank(admin);
+
+        nft.grantRole(issuerRole, backend);
+
+        assertTrue(nft.hasRole(issuerRole, backend));
+    }
+
+    function testGrantedIssuerCanMint() public {
+        bytes32 issuerRole = nft.ISSUER_ROLE();
+
+        vm.prank(admin);
+
+        nft.grantRole(issuerRole, backend);
+
+        vm.prank(backend);
+
+        uint256 tokenId = nft.mintProject(
+            projectOwner,
+            "PRJ-2026-100",
+            "ipfs://project-100"
+        );
+
+        assertEq(tokenId, 1);
+
+        assertEq(nft.ownerOf(tokenId), projectOwner);
+    }
+
+    function testRevokedIssuerCannotMint() public {
+        bytes32 issuerRole = nft.ISSUER_ROLE();
+
+        vm.startPrank(admin);
+
+        nft.grantRole(issuerRole, backend);
+
+        nft.revokeRole(issuerRole, backend);
+
+        vm.stopPrank();
+
+        assertFalse(nft.hasRole(issuerRole, backend));
+
+        vm.prank(backend);
+
+        vm.expectRevert();
+
+        nft.mintProject(projectOwner, "PRJ-2026-200", "ipfs://project-200");
+    }
+
+    function testAdminHasIssuerRole() public view {
+        bytes32 role = credit.ISSUER_ROLE();
+
+        assertTrue(credit.hasRole(role, admin));
     }
 }
