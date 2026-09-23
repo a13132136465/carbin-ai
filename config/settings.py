@@ -1,8 +1,14 @@
 import os
-
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+root_env = BASE_DIR / ".env"
+blockchain_env = BASE_DIR / "blockchain-contracts" / ".env"
+
+load_dotenv(root_env)
+load_dotenv(blockchain_env)
 
 
 class Settings:
@@ -64,9 +70,15 @@ class Settings:
         )
     )
 
-    BLOCKCHAIN_OPERATOR_ADDRESS = os.getenv("BLOCKCHAIN_OPERATOR_ADDRESS")
+    BLOCKCHAIN_OPERATOR_ADDRESS = os.getenv("ADMIN_ADDRESS")
+    BLOCKCHAIN_OPERATOR_PRIVATE_KEY=os.getenv("ADMIN_PRIVATE_KEY")
 
     CARBON_CREDIT_CONTRACT_ADDRESS = os.getenv("CARBON_CREDIT_CONTRACT_ADDRESS")
+
+    CARBON_PROJECT_NFT_ADDRESS = os.getenv("PROJECT_NFT")
+    CARBON_CREDIT_ADDRESS = os.getenv("CARBON_CREDIT")
+    
+    BLOCKCHAIN_CONTRACTS_DIR="./blockchain-contracts"
 
 
 settings = Settings()

@@ -1,54 +1,82 @@
-from typing import Optional
+from typing import Any
 
-from pydantic import BaseModel
+from pydantic import (
+    BaseModel,
+    Field,
+)
+
+# ======================================================
+# Audit
+# ======================================================
 
 
 class AuditRequest(BaseModel):
-    message: str
+
+    message: str = Field(
+        min_length=1,
+    )
 
 
-
-class AuditResponse(BaseModel):
-    status: str
-    
-    audit_id: str
-    
-    thread_id: str
-    
-    project_id: str | None = None
-    
-    question: str | None = None
-
-    project_name: Optional[str] = None
-
-    project_type: Optional[str] = None
-
-    project_region: Optional[str] = None
-
-    annual_generation_mwh: Optional[float] = None
-
-    grid_emission_factor: Optional[float] = None
-
-    carbon_estimate: Optional[float] = None
-
-    audit_report: Optional[str] = None
-
-    missing_fields: list[str] = []
-    
 class AuditResumeRequest(BaseModel):
+
+    message: str = Field(
+        min_length=1,
+    )
+
+
+class AuditDecisionRequest(BaseModel):
+
+    reason: str | None = None
+
+
+# ======================================================
+# Blockchain - Project NFT
+# ======================================================
+
+
+class MintProjectNFTRequest(BaseModel):
+
+    metadata_uri: str = Field(
+        min_length=1,
+    )
+
+
+# ======================================================
+# Blockchain - CarbonCredit
+# ======================================================
+
+
+class MintCarbonCreditRequest(BaseModel):
+
+    vintage: int | None = Field(
+        default=None,
+        ge=1900,
+        le=3000,
+    )
+
+
+# ======================================================
+# Blockchain - Retirement
+# ======================================================
+
+
+class RetireCarbonCreditRequest(BaseModel):
+
+    amount: int = Field(
+        gt=0,
+    )
+
+
+# ======================================================
+# Generic API responses
+# ======================================================
+
+
+class MessageResponse(BaseModel):
+
     message: str
-    
-class AuditDetailResponse(BaseModel):
-    audit_id: str
-    status: str
-    project_id: str | None = None
 
-    project_name: str | None = None
-    project_type: str | None = None
-    project_region: str | None = None
 
-    annual_generation_mwh: float | None = None
-    grid_emission_factor: float | None = None
-    carbon_estimate: float | None = None
+class BlockchainOperationResponse(BaseModel):
 
-    audit_report: str | None = None
+    data: dict[str, Any]

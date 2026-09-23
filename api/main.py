@@ -4,99 +4,87 @@ from fastapi import (
 )
 
 from api.schemas import (
+    AuditDecisionRequest,
     AuditRequest,
     AuditResumeRequest,
-    AuditResponse,
-    AuditDetailResponse,
+    BlockchainOperationResponse,
+    MintCarbonCreditRequest,
+    MintProjectNFTRequest,
+    RetireCarbonCreditRequest,
 )
 
 from services.audit_service import (
+    approve_audit,
+    get_audit,
+    reject_audit,
+    resume_audit,
     start_audit,
-    resume_audit as resume_audit_service,
-    get_audit as get_audit_service,
-    approve_audit as approve_audit_service,
-    reject_audit as reject_audit_service,
-)
-from services.project_service import (
-    get_project as get_project_service
 )
 
+from services.blockchain_service import (
+    mint_credit_for_audit,
+    mint_project_for_audit,
+    reconcile_transaction,
+    retire_credit,
+)
+
+from services.blockchain_query_service import (
+    get_blockchain_transaction,
+    get_credit_on_chain_info,
+    get_project_on_chain_info,
+    get_retirement_info,
+)
 
 app = FastAPI(
     title="CarbonAI API",
-    version="0.1.0",
+    version="1.0.0",
 )
+
+
+# ======================================================
+# Health
+# ======================================================
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+
+    return {
+        "status": "ok",
+    }
 
 
-@app.post(
-    "/api/audits",
-    response_model=AuditResponse,
-)
+# ======================================================
+# Audit
+# ======================================================
+
+
+@app.post("/api/audits")
 def create_audit(
     request: AuditRequest,
 ):
 
-    result = start_audit(request.message)
+    try:
 
-    return build_audit_response(result)
+        return start_audit(request.message)
 
+    except Exception as e:
 
-def build_audit_response(
-    service_result: dict,
-) -> AuditResponse:
-
-    result = service_result["result"]
-
-    interrupts = result.get("__interrupt__")
-
-    question = None
-    missing_fields = []
-
-    if interrupts:
-
-        interrupt_data = interrupts[0].value
-
-        question = interrupt_data.get("question")
-
-        missing_fields = interrupt_data.get(
-            "missing_fields",
-            [],
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
         )
 
-    return AuditResponse(
-        audit_id=service_result["audit_id"],
-        thread_id=service_result["thread_id"],
-        status=service_result["status"],
-        project_id=service_result["project_id"],
-        question=question,
-        project_name=result.get("project_name"),
-        project_type=result.get("project_type"),
-        project_region=result.get("project_region"),
-        annual_generation_mwh=result.get("annual_generation_mwh"),
-        grid_emission_factor=result.get("grid_emission_factor"),
-        carbon_estimate=result.get("carbon_estimate"),
-        audit_report=result.get("audit_report"),
-        missing_fields=(missing_fields),
-    )
 
-
-@app.post(
-    "/api/audits/{thread_id}/resume",
-    response_model=AuditResponse,
-)
-def resume_audit(
+@app.post("/api/audits/{thread_id}/resume")
+def resume_audit_api(
     thread_id: str,
     request: AuditResumeRequest,
 ):
 
     try:
 
-        result = resume_audit_service(
+        return resume_audit(
             thread_id=thread_id,
             message=request.message,
         )
@@ -111,95 +99,334 @@ def resume_audit(
     except Exception as e:
 
         raise HTTPException(
-            status_code=400,
-            detail=("Error resuming audit: " f"{str(e)}"),
+            status_code=500,
+            detail=str(e),
         )
 
-    return build_audit_response(result)
 
-
-@app.get(
-    "/api/audits/{audit_id}",
-    response_model=AuditDetailResponse,
-)
-def get_audit(
+@app.get("/api/audits/{audit_id}")
+def get_audit_api(
     audit_id: str,
 ):
 
     try:
-        audit = get_audit_service(audit_id)
 
-    except ValueError as e:
+        audit = get_audit(audit_id)
+
+        if audit is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Audit not found",
+            )
+
+        return audit
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+
         raise HTTPException(
-            status_code=404,
+            status_code=500,
             detail=str(e),
         )
-
-    return AuditDetailResponse(
-        project_id=audit.project_id,
-        audit_id=audit.audit_id,
-        status=audit.status,
-        project_name=audit.project_name,
-        project_type=audit.project_type,
-        project_region=audit.project_region,
-        annual_generation_mwh=(audit.annual_generation_mwh),
-        grid_emission_factor=(audit.grid_emission_factor),
-        carbon_estimate=(audit.carbon_estimate),
-        audit_report=audit.audit_report,
-    )
 
 
 @app.post("/api/audits/{audit_id}/approve")
-def approve_audit(
+def approve_audit_api(
     audit_id: str,
+    request: AuditDecisionRequest,
 ):
 
     try:
-        audit = approve_audit_service(audit_id)
+
+        return approve_audit(
+            audit_id=audit_id,
+            reason=request.reason,
+        )
 
     except ValueError as e:
+
         raise HTTPException(
             status_code=400,
             detail=str(e),
         )
 
-    return {
-        "audit_id": audit.audit_id,
-        "status": audit.status,
-    }
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
 
 
 @app.post("/api/audits/{audit_id}/reject")
-def reject_audit(
+def reject_audit_api(
     audit_id: str,
+    request: AuditDecisionRequest,
 ):
 
     try:
-        audit = reject_audit_service(audit_id)
+
+        return reject_audit(
+            audit_id=audit_id,
+            reason=request.reason,
+        )
 
     except ValueError as e:
+
         raise HTTPException(
             status_code=400,
             detail=str(e),
         )
 
-    return {
-        "audit_id": audit.audit_id,
-        "status": audit.status,
-    }
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
 
 
-@app.get("/api/projects/{project_id}")
-def get_project(
+# ======================================================
+# CarbonProjectNFT
+# ======================================================
+
+
+@app.post(
+    "/api/audits/{audit_id}/project-nft/mint",
+    response_model=BlockchainOperationResponse,
+)
+def mint_project_nft_api(
+    audit_id: str,
+    request: MintProjectNFTRequest,
+):
+
+    try:
+
+        result = mint_project_for_audit(
+            audit_id=(audit_id),
+            metadata_uri=(request.metadata_uri),
+        )
+
+        return {"data": result}
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
+
+
+@app.get("/api/projects/{project_id}/blockchain")
+def get_project_blockchain_api(
     project_id: str,
 ):
 
-    project = get_project_service(project_id)
+    try:
 
-    if project is None:
+        return get_project_on_chain_info(project_id)
+
+    except ValueError as e:
+
         raise HTTPException(
             status_code=404,
-            detail="Project not found",
+            detail=str(e),
         )
 
-    return project
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
+
+
+# ======================================================
+# CarbonCredit Mint
+# ======================================================
+
+
+@app.post(
+    "/api/audits/{audit_id}/credits/mint",
+    response_model=BlockchainOperationResponse,
+)
+def mint_carbon_credit_api(
+    audit_id: str,
+    request: MintCarbonCreditRequest,
+):
+
+    try:
+
+        result = mint_credit_for_audit(
+            audit_id=(audit_id),
+            vintage=(request.vintage),
+        )
+
+        return {"data": result}
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
+
+
+@app.get("/api/audits/{audit_id}/credits")
+def get_carbon_credit_api(
+    audit_id: str,
+):
+
+    try:
+
+        return get_credit_on_chain_info(audit_id)
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
+
+
+# ======================================================
+# CarbonCredit Retirement
+# ======================================================
+
+
+@app.post(
+    "/api/audits/{audit_id}/credits/retire",
+    response_model=BlockchainOperationResponse,
+)
+def retire_carbon_credit_api(
+    audit_id: str,
+    request: RetireCarbonCreditRequest,
+):
+
+    try:
+
+        result = retire_credit(
+            audit_id=(audit_id),
+            amount=(request.amount),
+        )
+
+        return {"data": result}
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
+
+
+@app.get("/api/retirements/{retirement_id}")
+def get_retirement_api(
+    retirement_id: str,
+):
+
+    try:
+
+        return get_retirement_info(retirement_id)
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
+
+
+# ======================================================
+# Blockchain Transactions
+# ======================================================
+
+
+@app.get("/api/blockchain/transactions/" "{transaction_id}")
+def get_blockchain_transaction_api(
+    transaction_id: int,
+):
+
+    try:
+
+        return get_blockchain_transaction(transaction_id)
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(e),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
+
+
+@app.post(
+    "/api/blockchain/transactions/" "{transaction_id}/reconcile",
+    response_model=BlockchainOperationResponse,
+)
+def reconcile_blockchain_transaction_api(
+    transaction_id: int,
+):
+
+    try:
+
+        result = reconcile_transaction(transaction_id)
+
+        return {"data": result}
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )

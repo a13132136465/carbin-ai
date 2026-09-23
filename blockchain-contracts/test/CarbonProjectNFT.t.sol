@@ -151,4 +151,12 @@ contract CarbonProjectNFTTest is Test {
 
         assertTrue(credit.hasRole(role, admin));
     }
+
+    function testCannotMintProjectToZeroAddress() public {
+        vm.prank(admin);
+
+        vm.expectRevert(CarbonProjectNFT.InvalidRecipient.selector);
+
+        nft.mintProject(address(0), "PRJ-001", "ipfs://project");
+    }
 }

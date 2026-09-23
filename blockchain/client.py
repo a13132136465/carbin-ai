@@ -9,6 +9,8 @@ from config.settings import settings
 def get_web3() -> Web3:
 
     web3 = Web3(Web3.HTTPProvider(settings.AVALANCHE_FUJI_RPC_URL))
+    if not web3.is_connected():
+        raise RuntimeError("Failed to connect to Avalanche Fuji")
 
     return web3
 
